@@ -33,13 +33,13 @@ function sendUniversalTx(UniversalTxRequest calldata req) external payable nonRe
 What it does:
 
 ```text
-TODO: explain what this function does.
+Recives user data, detects transaction type and sends it  to  _routeUniversalTx(req, _msgSender(), nativeValue, txType, false);
 ```
 
 Important parameters:
 
 ```text
-req
+req 
 msg.value
 ```
 
