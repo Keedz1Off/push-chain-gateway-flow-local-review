@@ -33,7 +33,9 @@ function sendUniversalTx(UniversalTxRequest calldata req) external payable nonRe
 What it does:
 
 ```text
-Recives user data, detects transaction type and sends it  to  _routeUniversalTx(req, _msgSender(), nativeValue, txType, false);
+Receives user data, detects the transaction type, and routes the transaction to _routeUniversalTx(...).
+
+This is the main user entry point on the source side.
 ```
 
 Important parameters:
@@ -46,14 +48,10 @@ msg.value
 Notes:
 
 ```text
-This is the main user entrypoint.
-
-CEA cannnot call this fucntion directly
-
-msg.value saved as nativeValue.
-
-The tx (transaction) type detects before routing.
-
+CEA cannot call this function directly.
+msg.value is saved as nativeValue.
+The function does not move funds itself.
+It only starts the source flow.
 ```
 
 ### _fetchTxType(...)
@@ -106,7 +104,10 @@ function _fetchTxType(UniversalTxRequest memory req, uint256 nativeValue) privat
 What it does:
 
 ```text
-This function detects the tx type.
+Detects what kind of transaction the user wants to send.
+
+It checks if the request has payload, funds amount, native value, or ERC20 token.
+Then it returns one of the TX_TYPE values.
 ```
 
 Checks:
@@ -120,17 +121,13 @@ hasNativeValue
 
 Notes:
 
-
-  if (hasPayload && !hasFunds) {
-        return TX_TYPE.GAS_AND_PAYLOAD;
-    }
-   
-    
 ```text
-If there is no payload and no funds amount but native value is send, the tx is treated as GAS.
+GAS means only native value was sent.
+GAS_AND_PAYLOAD means payload exists, but funds amount is zero.
+FUNDS means funds are being sent without payload.
+FUNDS_AND_PAYLOAD means funds and payload are sent together.
 
-If there is paylod but not  
-
+Invalid combinations revert with InvalidInput().
 ```
 
 ### _routeUniversalTx(...)
@@ -171,7 +168,9 @@ function _routeUniversalTx(
 What it does:
 
 ```text
-TODO
+Routes the transaction into the correct internal path.
+
+It checks the revert recipient, collects protocol fee for normal user flow, and then chooses either gas flow or funds flow.
 ```
 
 Important branches:
@@ -186,7 +185,12 @@ FUNDS_AND_PAYLOAD
 Notes:
 
 ```text
-TODO
+revertRecipient must not be address(0).
+If the call is not from CEA, the gateway collects INBOUND_FEE.
+GAS and GAS_AND_PAYLOAD go to _sendTxWithGas(...).
+FUNDS and FUNDS_AND_PAYLOAD go to _sendTxWithFunds(...).
+
+fromCEA changes how recipient is handled.
 ```
 
 ### _collectInboundFee(...)
@@ -210,13 +214,24 @@ function _collectInboundFee(uint256 nativeValue) private returns (uint256 adjust
 What it does:
 
 ```text
-TODO
+Collects the inbound protocol fee from nativeValue.
+
+If INBOUND_FEE is zero, nothing is collected.
+If nativeValue is smaller than the fee, the transaction reverts.
+The fee is sent to TSS_ADDRESS.
 ```
 
 Notes:
 
 ```text
-TODO
+Returns two values:
+adjustedNative = nativeValue after fee subtraction.
+feeCollected = the protocol fee amount.
+
+Example:
+nativeValue = 100
+fee = 5
+return = (95, 5)
 ```
 
 ### _sendTxWithGas(...)
@@ -249,13 +264,17 @@ function _sendTxWithGas(
 What it does:
 
 ```text
-TODO
+Handles the gas-only path.
+
+If gas amount is greater than zero, it checks caps, deposits native value to TSS_ADDRESS, and emits UniversalTx event.
 ```
 
 Notes:
 
 ```text
-TODO
+This path uses address(0) as token because it works with native value.
+The event is important because off-chain TSS / relayers read it as the source message.
+If _gasAmount is zero, it does not deposit funds but can still emit a payload event.
 ```
 
 ### _sendTxWithFunds(...)
@@ -368,7 +387,10 @@ function _sendTxWithFunds(UniversalTxRequest memory _req, uint256 nativeValue, T
 What it does:
 
 ```text
-TODO
+Handles the funds path.
+
+It supports native funds, ERC20 funds, funds only, and funds with payload.
+It may also split nativeValue into funds amount and gas amount.
 ```
 
 Important branches:
@@ -384,7 +406,11 @@ gas top-up
 Notes:
 
 ```text
-TODO
+For native funds, _req.amount must match the native value used as funds.
+For ERC20 funds, nativeValue can be used as gas top-up.
+Before deposit, the function consumes the rate limit.
+Then it deposits funds through _handleDeposits(...).
+Finally it emits UniversalTx event for off-chain processing.
 ```
 
 ### _handleDeposits(...)
@@ -406,7 +432,10 @@ function _handleDeposits(address token, uint256 amount) internal {
 What it does:
 
 ```text
-TODO
+Moves funds into the correct holding place.
+
+Native token is sent to TSS_ADDRESS.
+ERC20 token is transferred from the sender to VAULT.
 ```
 
 Funds movement:
@@ -419,7 +448,10 @@ ERC20 token -> VAULT
 Notes:
 
 ```text
-TODO
+address(0) means native token.
+For ERC20, tokenToLimitThreshold[token] must be non-zero.
+This means unsupported tokens are rejected.
+This is the real source-side funds movement step.
 ```
 
 ### _emitUniversalTx(...)
@@ -455,12 +487,16 @@ function _emitUniversalTx(
 What it does:
 
 ```text
-TODO
+Emits the UniversalTx event with all cross-chain transaction data.
+
+The event contains sender, recipient, token, amount, payload, revert recipient, transaction type, signature data, and fromCEA flag.
 ```
 
 Why it matters:
 
 ```text
-TODO
+Off-chain TSS / relayers use this event as the source-side message.
+
+If event data does not match the real deposited funds or intended payload, the destination side may finalize the wrong action.
 ```
 

@@ -41,7 +41,12 @@ function finalizeUniversalTx(
 What it does:
 
 ```text
-TODO
+Finalizes a universal transaction on the destination side.
+
+Only TSS can call this function.
+It gets the CEA address for pushAccount.
+If CEA is not deployed yet, it deploys one.
+Then it calls _finalizeUniversalTx(...).
 ```
 
 Important checks:
@@ -55,7 +60,10 @@ whenNotPaused
 Notes:
 
 ```text
-TODO
+This is the main destination-side entry point.
+It does not directly execute the payload itself.
+It prepares the correct CEA and passes execution to the internal finalize function.
+The finalize event is emitted after the internal flow.
 ```
 
 ### Vault._finalizeUniversalTx(...)
@@ -92,7 +100,10 @@ function _finalizeUniversalTx(
 What it does:
 
 ```text
-TODO
+Moves funds to the CEA and calls executeUniversalTx(...).
+
+For ERC20 tokens, Vault transfers tokens to CEA first.
+For native token, Vault sends native value directly with the call.
 ```
 
 Funds movement:
@@ -105,7 +116,10 @@ native: Vault -> CEA through call value
 Notes:
 
 ```text
-TODO
+_validateParams(...) checks basic input correctness.
+If token is ERC20, Vault must have enough token balance.
+If token is native, amount is passed as msg.value to CEA.
+This function is the core finalization step.
 ```
 
 ### CEA.executeUniversalTx(...)
@@ -125,12 +139,15 @@ function executeUniversalTx(
 What it does:
 
 ```text
-TODO
+Executes the final universal transaction from the CEA side.
+
+Vault passes the transaction ids, original Push account, recipient, and payload to CEA.
 ```
 
 Scope note:
 
 ```text
-TODO: explain whether CEA implementation is inside or outside the current scope.
+This file shows the interface call.
+The important audit point in this flow is whether Vault passes the correct values into CEA.
 ```
 

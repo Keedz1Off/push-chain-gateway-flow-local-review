@@ -41,7 +41,10 @@ function revertUniversalTx(
 What it does:
 
 ```text
-TODO
+Returns funds to the revert recipient when universal transaction must be reverted.
+
+Only Vault can call this function.
+It validates revert parameters, sends native or ERC20 funds, and emits RevertUniversalTx event.
 ```
 
 Important checks:
@@ -56,7 +59,10 @@ amount != 0
 Notes:
 
 ```text
-TODO
+Native token is sent with call value.
+ERC20 token is sent with safeTransfer.
+The revert recipient must be valid.
+The function depends on _validateRevertParams(...) for replay protection.
 ```
 
 ### _validateRevertParams(...)
@@ -76,7 +82,13 @@ function _validateRevertParams(bytes32 subTxId, uint256 amount, address token, a
 What it does:
 
 ```text
-TODO
+Validates the revert request before funds are returned.
+
+It checks that the subTxId was not already used.
+It checks that revertRecipient is not address(0).
+It checks that amount is not zero.
+For native token, msg.value must equal amount.
+Then it marks subTxId as executed.
 ```
 
 Replay protection:
@@ -88,6 +100,8 @@ isExecuted[subTxId]
 Notes:
 
 ```text
-TODO
+isExecuted[subTxId] prevents the same revert from being processed twice.
+The state is updated before funds are sent in the parent function.
+This protects the refund path from replay.
 ```
 
