@@ -46,7 +46,14 @@ msg.value
 Notes:
 
 ```text
-TODO
+This is the main user entrypoint.
+
+CEA cannnot call this fucntion directly
+
+msg.value saved as nativeValue.
+
+The tx (transaction) type detects before routing.
+
 ```
 
 ### _fetchTxType(...)
@@ -99,7 +106,7 @@ function _fetchTxType(UniversalTxRequest memory req, uint256 nativeValue) privat
 What it does:
 
 ```text
-TODO
+This function detects the tx type.
 ```
 
 Checks:
@@ -113,8 +120,17 @@ hasNativeValue
 
 Notes:
 
+
+  if (hasPayload && !hasFunds) {
+        return TX_TYPE.GAS_AND_PAYLOAD;
+    }
+   
+    
 ```text
-TODO
+If there is no payload and no funds amount but native value is send, the tx is treated as GAS.
+
+If there is paylod but not  
+
 ```
 
 ### _routeUniversalTx(...)
