@@ -19,53 +19,7 @@ My reasoning:
 
 ## Source Flow
 
-### sendUniversalTx(...)
-
-```text
-Invariant:
-_routeUniversalTx(...) must only be reached through the valid gateway flow.
-Where I checked:
- ```solidity
-function sendUniversalTx(UniversalTxRequest calldata req) external payable nonReentrant whenNotPaused {
-    if (_isCallerCEA()) revert Errors.InvalidInput();
- ```
-
-Protection / Check:
-
-Status:
-
-My reasoning:
-```
-
-### _fetchTxType(...)
-
-```text
-Invariant:
-
-Where I checked:
-
-Protection / Check:
-
-Status:
-
-My reasoning:
-```
-
 ### _routeUniversalTx(...)
-
-```text
-Invariant:
-
-Where I checked:
-
-Protection / Check:
-
-Status:
-
-My reasoning:
-```
-
-### _collectInboundFee(...)
 
 ```text
 Invariant:
