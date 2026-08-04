@@ -7,12 +7,14 @@ Use this format:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
-Protected / No issue found
+Protected / Suspicious / Broken
 
-Reason:
+My reasoning:
 ```
 
 ## Source Flow
@@ -22,11 +24,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _fetchTxType(...)
@@ -34,11 +38,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _routeUniversalTx(...)
@@ -46,11 +52,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _collectInboundFee(...)
@@ -58,11 +66,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _sendTxWithGas(...)
@@ -70,11 +80,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _sendTxWithFunds(...)
@@ -82,11 +94,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _handleDeposits(...)
@@ -94,11 +108,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _emitUniversalTx(...)
@@ -106,11 +122,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ## Finalize Flow
@@ -120,11 +138,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### Vault._finalizeUniversalTx(...)
@@ -132,11 +152,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### CEA.executeUniversalTx(...)
@@ -144,11 +166,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ## Revert / Refund Flow
@@ -158,11 +182,13 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
 
 ### _validateRevertParams(...)
@@ -170,9 +196,11 @@ Reason:
 ```text
 Invariant:
 
+Where I checked:
+
 Protection / Check:
 
 Status:
 
-Reason:
+My reasoning:
 ```
