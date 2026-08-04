@@ -93,13 +93,18 @@ Protection / Check:
 
 1. If txType is TX_TYPE.GAS or TX_TYPE.GAS_AND_PAYLOAD, the recipient is saved as req.recipient when caller is CEA and as address(0) if caller is not CEA; it is then forwarded to _sendTxWithGas()
 
-2. If txType is TX_TYPE.FUNDS or TX_TYPE.FUNDS_AND_PAYLOAD, the recipient is saved as 
+2. If txType is TX_TYPE.FUNDS or TX_TYPE.FUNDS_AND_PAYLOAD; it is then forwarded to _sendTxWithFunds().
+
+3. Otherwise it reverts
 
 
 Status:
 
+Protected.
+
 My reasoning:
 
+(Above)
 
 ```
 
