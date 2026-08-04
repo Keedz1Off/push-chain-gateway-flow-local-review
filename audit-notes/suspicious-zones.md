@@ -4,6 +4,24 @@ This file is for audit notes, not final findings.
 
 Each section should explain why a part of the flow is security-sensitive and what I checked.
 
+## Main Functions To Check
+
+```text
+sendUniversalTx(...)
+_fetchTxType(...)
+_routeUniversalTx(...)
+_collectInboundFee(...)
+_sendTxWithGas(...)
+_sendTxWithFunds(...)
+_handleDeposits(...)
+_emitUniversalTx(...)
+Vault.finalizeUniversalTx(...)
+Vault._finalizeUniversalTx(...)
+CEA.executeUniversalTx(...)
+gateway.revertUniversalTx(...)
+_validateRevertParams(...)
+```
+
 ## 1. Event Data Integrity
 
 Function:
