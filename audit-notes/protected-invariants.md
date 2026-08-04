@@ -5,7 +5,7 @@ This file is for invariants that were checked and appear to be protected.
 Use this format:
 
 ```text
-Invariant:
+Invariant: 
 
 Where I checked:
 
@@ -23,8 +23,12 @@ My reasoning:
 
 ```text
 Invariant:
-
+_routeUniversalTx(...) must only be reached through the valid gateway flow.
 Where I checked:
+ ```solidity
+function sendUniversalTx(UniversalTxRequest calldata req) external payable nonReentrant whenNotPaused {
+    if (_isCallerCEA()) revert Errors.InvalidInput();
+ ```
 
 Protection / Check:
 
