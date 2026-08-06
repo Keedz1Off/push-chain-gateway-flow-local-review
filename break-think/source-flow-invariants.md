@@ -18,7 +18,7 @@ CONSEQUENCES
 
 ```text
 INVARIANT
-1. Gas amount must be checked against the configured caps before deposit.
+1. Gas amount must be checked against the configured limits.
 2. Native gas funds must be deposited to the correct TSS address.
 3. The emitted UniversalTx data must match the gas flow data.
 
