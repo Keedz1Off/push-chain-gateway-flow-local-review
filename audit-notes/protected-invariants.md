@@ -124,12 +124,37 @@ Where I checked:
 
    // this is a part of  _sendTxWithGas()
 
-
-
 emitUniversalTx(
         _caller, _recipient, address(0), _gasAmount, _payload, _revertRecipient, _txType, _signatureData, _fromCEA
     );
 }
+
+Full function:
+
+          function _emitUniversalTx(
+    address sender,
+    address recipient,
+    address token,
+    uint256 amount,
+    bytes memory payload,
+    address revertRecipient,
+    TX_TYPE txType,
+    bytes memory signatureData,
+    bool fromCEA
+) private {
+    emit UniversalTx({
+        sender: sender,
+        recipient: recipient,
+        token: token,
+        amount: amount,
+        payload: payload,
+        revertRecipient: revertRecipient,
+        txType: txType,
+        signatureData: signatureData,
+        fromCEA: fromCEA
+    });
+}
+
 
           
 
@@ -146,24 +171,39 @@ Protection / Check:
         if (!ok) revert Errors.DepositFailed();
 
 
-3. 
+3.   emit UniversalTx({
+        sender: sender,
+        recipient: recipient,
+        token: token,
+        amount: amount,
+        payload: payload,
+        revertRecipient: revertRecipient,
+        txType: txType,
+        signatureData: signatureData,
+        fromCEA: fromCEA
+    });
+}
 
 Status:
 1.Protected.
 
 2.Protected.
 
-3.Protected.
+3. Suspicious
 
 My reasoning:
 
 1. If this funcion receives _gasAmount, the function first checks the gas limits using checkUSDCaps(), the second check verifies the gas amount limit per the block.After all call. Finally _handleDeposits() is called.
 
 
-2. When _handleDeposits() is called , the contract sends native funds to TSS_ADDRESS using payable.
+2. When _handleDeposits() is called , the contract sends native funds to TSS_ADDRESS using payable.Otherwise it reverts.
 
 
-3. 
+3.  The UniversalTx() is risky because _emitUniversalTx() don't verifies data before emitting,this may lead to native funds going to the wrong address by changing emit dat.
+
+
+
+
 
 
 
@@ -171,22 +211,66 @@ My reasoning:
 
 
 ### _sendTxWithFunds(...)
-
-```text
+---------------------
+---
+-----
+--
+------------------------
 
 
 ### _handleDeposits(...)
 
 ```text
 Invariant:
+1. Native funds must be sent to TSS_ADDRESS.
 
 Where I checked:
+1. function _handleDeposits(address token, uint256 amount) internal {
+    if (token == address(0)) {
+        (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
+        if (!ok) revert Errors.DepositFailed();
+    } else {
+        if (tokenToLimitThreshold[token] == 0) revert Errors.NotSupported();
+        IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
+    }
+}
+
+2. else {
+        if (tokenToLimitThreshold[token] == 0) revert Errors.NotSupported();
+        IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
+    }
+}
+
 
 Protection / Check:
 
+1.  if (token == address(0)) {
+        (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
+        if (!ok) revert Errors.DepositFailed()
+
+2.  IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
+
+
+
+3. 
+
+
 Status:
 
+1. Protected
+
+2. Protected
+
+3. Protected 
+
+
 My reasoning:
+1. When _handleDeposits() is called , the contract sends native funds to TSS_ADDRESS using payable.Otherwise it reverts.
+
+2. ERC20 funds must be transferred to VAULT.
+
+
+
 ```
 
 ### _emitUniversalTx(...)
