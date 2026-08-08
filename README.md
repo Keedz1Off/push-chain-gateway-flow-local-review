@@ -4,6 +4,23 @@ This repository is a local security review of the Push Chain Gateway flow.
 
 The goal is to understand the architecture, follow the full cross-chain flow, and prepare invariant-based security notes.
 
+## Contest Context
+
+This review was prepared against the Push Chain EVM Gateway scope published for the Push Chain DualDefense audit contest.
+
+The repository documents my independent contest-oriented review process:
+
+```text
+Trace the complete flow
+-> identify trust boundaries
+-> define invariants
+-> verify protections in code
+-> isolate suspicious zones
+-> prepare PoC ideas
+```
+
+This is a portfolio review and not an official audit report from Push Chain or the contest organizers.
+
 ## Scope
 
 ```text
@@ -59,3 +76,36 @@ Understand the flow
 -> Check suspicious zones
 -> Write PoC ideas
 ```
+
+## Review Status
+
+The main EVM gateway source and finalization flows were reviewed function by function. The completed notes currently contain:
+
+```text
+27 invariant checks
+23 protected checks
+4 suspicious checks grouped into 1 finding candidate
+0 confirmed vulnerabilities
+```
+
+The remaining candidate concerns `UniversalTx` event data integrity. It requires a complete caller-to-event trace or a Foundry PoC before it can be classified as a confirmed vulnerability.
+
+## Portfolio Scope
+
+### Primary Reviews
+
+```text
+Push Chain Gateway contest-oriented review
+Arbitrum bridge flow review
+Optimism bridge flow review
+LayerZero OFT flow review and exploit-lab practice
+```
+
+### Additional Architecture Studies
+
+```text
+Arbitrum L3 bridge architecture
+Sky / DAI Optimism-based bridge fork
+```
+
+The primary reviews represent the main security practice in my portfolio. The L3 and Sky repositories are supporting architecture studies that show how bridge assumptions change across forks and layered systems.

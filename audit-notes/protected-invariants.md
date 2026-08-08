@@ -2,6 +2,30 @@
 
 This file is for invariants that were checked and appear to be protected.
 
+## Review Summary
+
+```text
+Completed function reviews: 9
+Checked invariants: 27
+Protected checks: 23
+Suspicious checks: 4
+Distinct suspicious finding candidates: 1
+Confirmed vulnerabilities: 0
+```
+
+The suspicious checks point to one shared candidate: event data integrity in `_emitUniversalTx(...)` and its caller `_sendTxWithGas(...)`.
+
+Current status: **Suspicious / not yet confirmed**.
+
+This becomes a confirmed finding only if a caller can make the emitted `UniversalTx` data differ from the funds actually deposited or from the user's intended request. The absence of validation inside `_emitUniversalTx(...)` alone is not sufficient evidence because this helper may rely on validation performed earlier in the flow.
+
+## Contents
+
+- Source Flow
+- Finalize Flow
+- Revert / Refund Flow
+- Review Conclusion
+
 Use this format:
 
 ```text
@@ -213,11 +237,151 @@ My reasoning:
 
 
 ### _sendTxWithFunds(...)
----------------------
----
------
---
-------------------------
+
+```text
+Invariant:
+1. Native funds amount must match the native value used in the transaction.
+2. ERC20 funds must be deposited before UniversalTx is emitted.
+3. FUNDS_AND_PAYLOAD must preserve both funds data and payload data.
+
+Where I checked:
+
+function _sendTxWithFunds(UniversalTxRequest memory _req, uint256 nativeValue, TX_TYPE txType, bool fromCEA)
+    private
+{
+    if (txType == TX_TYPE.FUNDS) {
+        address tokenForFunds;
+
+        if (_req.token == address(0)) {
+            if (_req.amount != nativeValue) revert Errors.InvalidAmount();
+            tokenForFunds = address(0);
+        } else {
+            if (nativeValue > 0) {
+                address gasRecipient = fromCEA ? _req.recipient : address(0);
+                _sendTxWithGas(
+                    TX_TYPE.GAS,
+                    _msgSender(),
+                    gasRecipient,
+                    nativeValue,
+                    bytes(""),
+                    _req.revertRecipient,
+                    _req.signatureData,
+                    fromCEA
+                );
+            }
+            tokenForFunds = _req.token;
+        }
+
+        _consumeRateLimit(tokenForFunds, _req.amount);
+        _handleDeposits(tokenForFunds, _req.amount);
+
+        _emitUniversalTx(
+            _msgSender(),
+            _req.recipient,
+            tokenForFunds,
+            _req.amount,
+            _req.payload,
+            _req.revertRecipient,
+            txType,
+            _req.signatureData,
+            fromCEA
+        );
+    }
+
+    if (txType == TX_TYPE.FUNDS_AND_PAYLOAD) {
+        address tokenForFundsAndPayload;
+        address gasRecipient = fromCEA ? _req.recipient : address(0);
+
+        if (nativeValue == 0) {
+            if (_req.token == address(0)) revert Errors.InvalidAmount();
+            tokenForFundsAndPayload = _req.token;
+        } else if (_req.token == address(0)) {
+            if (nativeValue < _req.amount) revert Errors.InvalidAmount();
+
+            uint256 gasAmount = nativeValue - _req.amount;
+
+            if (gasAmount > 0) {
+                _sendTxWithGas(
+                    TX_TYPE.GAS,
+                    _msgSender(),
+                    gasRecipient,
+                    gasAmount,
+                    bytes(""),
+                    _req.revertRecipient,
+                    _req.signatureData,
+                    fromCEA
+                );
+            }
+            tokenForFundsAndPayload = address(0);
+        } else if (_req.token != address(0)) {
+            uint256 gasAmount = nativeValue;
+            _sendTxWithGas(
+                TX_TYPE.GAS,
+                _msgSender(),
+                gasRecipient,
+                gasAmount,
+                bytes(""),
+                _req.revertRecipient,
+                _req.signatureData,
+                fromCEA
+            );
+
+            tokenForFundsAndPayload = _req.token;
+        }
+
+        _consumeRateLimit(tokenForFundsAndPayload, _req.amount);
+        _handleDeposits(tokenForFundsAndPayload, _req.amount);
+
+        address fundsAndPayloadRecipient = fromCEA ? _req.recipient : address(0);
+        _emitUniversalTx(
+            _msgSender(),
+            fundsAndPayloadRecipient,
+            tokenForFundsAndPayload,
+            _req.amount,
+            _req.payload,
+            _req.revertRecipient,
+            txType,
+            _req.signatureData,
+            fromCEA
+        );
+    }
+}
+
+Protection / Check:
+
+1. if (_req.token == address(0)) {
+       if (_req.amount != nativeValue) revert Errors.InvalidAmount();
+   }
+
+2. _handleDeposits(tokenForFunds, _req.amount);
+   _emitUniversalTx(...);
+
+3. _emitUniversalTx(
+       _msgSender(),
+       fundsAndPayloadRecipient,
+       tokenForFundsAndPayload,
+       _req.amount,
+       _req.payload,
+       _req.revertRecipient,
+       txType,
+       _req.signatureData,
+       fromCEA
+   );
+
+Status:
+1. Protected.
+2. Protected.
+3. Protected.
+
+My reasoning:
+
+Assistant Review Note:
+1. In the native FUNDS path, _req.amount must equal nativeValue. In the native FUNDS_AND_PAYLOAD path, nativeValue must cover _req.amount and the remaining value is separated as gasAmount.
+
+2. _handleDeposits(...) is called before _emitUniversalTx(...). If the deposit fails, the transaction reverts and the event is not emitted.
+
+3. The selected token, _req.amount, and _req.payload are forwarded into the same UniversalTx event. This keeps the funds and payload together in the FUNDS_AND_PAYLOAD path.
+```
 
 
 ### _handleDeposits(...)
@@ -586,4 +750,29 @@ My reasoning:
 3. For native token, msg.value must equal amount.Then it marks subTxId as executed.
 
 
+```
+
+## Review Conclusion
+
+### Result
+
+```text
+One suspicious finding candidate was identified.
+No vulnerability is confirmed yet.
+```
+
+### Candidate: UniversalTx Event Data Integrity
+
+```text
+Status: Suspicious / requires a PoC or a complete caller-to-event trace.
+
+Affected area:
+_sendTxWithGas(...)
+_emitUniversalTx(...)
+
+Question to prove:
+Can user-controlled or incorrectly routed data make the emitted token, amount, recipient, or payload differ from the funds actually deposited and the intended request?
+
+Required next step:
+Build a Foundry test that compares the real deposit state with the emitted UniversalTx fields. If they cannot diverge, mark the candidate as Protected. If they can diverge and the off-chain TSS trusts the event, write it as a confirmed finding.
 ```
