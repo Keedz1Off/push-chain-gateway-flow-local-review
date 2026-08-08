@@ -571,5 +571,19 @@ Protection / Check:
 
 Status:
 
+1. Protected.
+
+2. Protected. 
+
+3. Protected.
+
 My reasoning:
+
+1.It checks that the subTxId was not already used. Otherwise it reverts.
+
+2.It checks that amount is not zero.For native token, msg.value must equal amount.Otherwise it reverts.
+
+3. For native token, msg.value must equal amount.Then it marks subTxId as executed.
+
+
 ```
