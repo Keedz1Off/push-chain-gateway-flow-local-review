@@ -408,28 +408,74 @@ My reasoning:
 
 ```text
 Invariant:
+1. ERC20 amount must be transferred from Vault to the correct CEA before execution.
+2. Native amount must be sent to CEA as call value before execution.
+3. CEA execution parameters must match the finalized transaction data.
+
 
 Where I checked:
+function _finalizeUniversalTx(
+    bytes32 subTxId,
+    bytes32 universalTxId,
+    address pushAccount,
+    address recipient,
+    address token,
+    uint256 amount,
+    bytes calldata data,
+    address cea
+) private {
+    _validateParams(pushAccount, token, amount);
 
+    if (token != address(0)) {
+        if (amount > 0) {
+            if (IERC20(token).balanceOf(address(this)) < amount) {
+                revert Errors.InvalidAmount();
+            }
+            IERC20(token).safeTransfer(cea, amount);
+        }
+        ICEA(cea).executeUniversalTx(subTxId, universalTxId, pushAccount, recipient, data); // ERC20 token
+    } else {
+        ICEA(cea).executeUniversalTx{ value: amount }(subTxId, universalTxId, pushAccount, recipient, data); // native token
+    }
+}
 Protection / Check:
 
+1. if (token != address(0)) {
+        if (amount > 0) {
+            if (IERC20(token).balanceOf(address(this)) < amount) {
+                revert Errors.InvalidAmount();
+            }
+            IERC20(token).safeTransfer(cea, amount);
+        }
+        ICEA(cea).executeUniversalTx(subTxId, universalTxId, pushAccount, recipient, data); // ERC20 token
+
+
+
+2.   } else {
+        ICEA(cea).executeUniversalTx{ value: amount }(subTxId, universalTxId, pushAccount, recipient, data); // native token
+
+
+
+
+3.  _validateParams(pushAccount, token, amount);
+
+
 Status:
+1.  Protected.
+
+2.  Protected.
+
+3. Protected.
 
 My reasoning:
+1. Vault checks that it has enought ERC20 tokens and uses safeTransfer() to send exact amount to the CEA before .executeUniversalTx() is called. Otherwise it reverts 
+
+2. Vault sends native tokens to CEA.
+
+3. _validateParams() verifies the  parameters ( pushAccount, token, amount ) before sending them to the CEA.Otherwise it reverts 
+
 ```
 
-### CEA.executeUniversalTx(...)
-
-```text
-Invariant:
-
-Where I checked:
-
-Protection / Check:
-
-Status:
-
-My reasoning:
 ```
 
 ## Revert / Refund Flow
@@ -439,23 +485,89 @@ My reasoning:
 ```text
 Invariant:
 
+1. Only Vault can trigger the revert flow.
+2. Reverted funds must be sent to the intended revertRecipient.
+3. RevertUniversalTx event data must match the real reverted funds
+
 Where I checked:
+
+1.
+
+function revertUniversalTx(
+    bytes32 subTxId,
+    bytes32 universalTxId,
+    address token,
+    uint256 amount,
+    RevertInstructions calldata revertInstruction
+) external payable nonReentrant whenNotPaused onlyRole(VAULT_ROLE) {
+    _validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+
+    if (token == address(0)) {
+        (bool ok,) = payable(revertInstruction.revertRecipient).call{ value: amount }("");
+        if (!ok) revert Errors.WithdrawFailed();
+    } else {
+        IERC20(token).safeTransfer(revertInstruction.revertRecipient, amount);
+    }
+
+    emit RevertUniversalTx(
+        subTxId, universalTxId, revertInstruction.revertRecipient, token, amount, revertInstruction
+    );
+}
 
 Protection / Check:
 
+1. onlyRole(VAULT_ROLE
+
+2.  _validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+
+     (bool ok,) = payable(revertInstruction.revertRecipient).call{ value: amount }("");
+        if (!ok) revert Errors.WithdrawFailed();
+
+3.  _validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+
 Status:
 
+1. Protected.
+
+2. Protected.
+
+3. Protected. 
+
 My reasoning:
-```
+
+1. Only Vault can call this function.
+
+2. Vault verifies revertRecipient using _validateRevertParams and sends the funds to it.
+
+3. Vault verifies data for RevertUniversalTx() using  _validateRevertParams().
 
 ### _validateRevertParams(...)
 
 ```text
 Invariant:
 
+1. The same subTxId must not be reverted twice.
+2. revertRecipient must not be address(0).
+3. Native revert amount must match msg.value.
+
 Where I checked:
 
+function _validateRevertParams(bytes32 subTxId, uint256 amount, address token, address revertRecipient) private {
+    if (isExecuted[subTxId]) revert Errors.PayloadExecuted();
+    if (revertRecipient == address(0)) revert Errors.InvalidRecipient();
+    if (amount == 0 || (token == address(0) && msg.value != amount)) revert Errors.InvalidAmount();
+
+    isExecuted[subTxId] = true;
+}
+
 Protection / Check:
+
+1.  if (isExecuted[subTxId]) revert Errors.PayloadExecuted();
+
+2.  if (revertRecipient == address(0)) revert Errors.InvalidRecipient();
+
+3.  if (amount == 0 || (token == address(0) && msg.value != amount)) revert Errors.InvalidAmount();
+
 
 Status:
 
