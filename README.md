@@ -1,5 +1,5 @@
 # Push Chain Gateway Flow Local Review
-
+<img width="1774" height="887" alt="62d0d14c-0453-4de2-9287-304bd824b8c6" src="https://github.com/user-attachments/assets/0edfe258-a5f5-402a-beb7-212bab799187" />
 This repository is a local security review of the Push Chain Gateway flow.
 
 The goal is to understand the architecture, follow the full cross-chain flow, and prepare invariant-based security notes.
@@ -8,7 +8,8 @@ The goal is to understand the architecture, follow the full cross-chain flow, an
 
 This review was prepared against the Push Chain EVM Gateway scope published for the Push Chain DualDefense audit contest.
 
-![Uploading image.png…]()
+
+
 
 
 The repository documents my independent contest-oriented review process:
