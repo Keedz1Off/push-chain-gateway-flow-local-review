@@ -9,7 +9,10 @@ The goal is to understand the architecture, follow the full cross-chain flow, an
 This review was prepared against the Push Chain EVM Gateway scope published for the Push Chain DualDefense audit contest.
 
 
+<img width="1280" height="676" alt="image" src="https://github.com/user-attachments/assets/fbca8633-09c5-4f11-9338-abc3fbcc5014" /> 
 
+
+THE CONTEST IS ALREADY FINISHED
 
 
 The repository documents my independent contest-oriented review process:
