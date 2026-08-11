@@ -29,7 +29,7 @@ This becomes a confirmed finding only if a caller can make the emitted `Universa
 Use this format:
 
 ```text
-Invariant: 
+Invariant:
 
 Where I checked:
 
@@ -45,59 +45,79 @@ My reasoning:
 
 ### _routeUniversalTx(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. _routeUniversalTx(...) must only be reached through the valid gateway flow.
 
 2. Protocol fee must be collected when the call is not from CEA.
 
 3. txType must route the transaction to the correct internal function.
 
+**Where I checked:**
 
-Where I checked:
+3.
 
-3. function _routeUniversalTx(
+```solidity
+function _routeUniversalTx(
     UniversalTxRequest memory req,
     address caller,
     uint256 nativeValue,
     TX_TYPE txType,
     bool fromCEA
 ) internal {
+```
 
-2.  if (!fromCEA) {
-        uint256 feeCollected;
-        (nativeValue, feeCollected) = _collectInboundFee(nativeValue);
-        totalProtocolFeesCollected += feeCollected;
-    }
+2.
 
-
-Protection / Check:
-1. ()internal 
-
-
-2. uint256 feeCollected;
-        (nativeValue, feeCollected) = _collectInboundFee(nativeValue);
-        totalProtocolFeesCollected += feeCollected;
-
-3.  if (txType == TX_TYPE.GAS || txType == TX_TYPE.GAS_AND_PAYLOAD) {
-        address gasRecipient = fromCEA ? req.recipient : address(0); //  result 1: req.recipient 
-        _sendTxWithGas(
-            txType, caller, gasRecipient, nativeValue, req.payload, req.revertRecipient, req.signatureData, fromCEA
-        );
-    } else if (txType == TX_TYPE.FUNDS || txType == TX_TYPE.FUNDS_AND_PAYLOAD) {
-        _sendTxWithFunds(req, nativeValue, txType, fromCEA);
-    } else {
-        revert Errors.InvalidTxType();
-    }
+```solidity
+if (!fromCEA) {
+    uint256 feeCollected;
+    (nativeValue, feeCollected) = _collectInboundFee(nativeValue);
+    totalProtocolFeesCollected += feeCollected;
 }
-Status:
+```
+
+**Protection / Check:**
+
+1.
+
+```solidity
+internal
+```
+
+2.
+
+```solidity
+uint256 feeCollected;
+(nativeValue, feeCollected) = _collectInboundFee(nativeValue);
+totalProtocolFeesCollected += feeCollected;
+```
+
+3.
+
+```solidity
+if (txType == TX_TYPE.GAS || txType == TX_TYPE.GAS_AND_PAYLOAD) {
+    address gasRecipient = fromCEA ? req.recipient : address(0); //  result 1: req.recipient
+    _sendTxWithGas(
+        txType, caller, gasRecipient, nativeValue, req.payload, req.revertRecipient, req.signatureData, fromCEA
+    );
+} else if (txType == TX_TYPE.FUNDS || txType == TX_TYPE.FUNDS_AND_PAYLOAD) {
+    _sendTxWithFunds(req, nativeValue, txType, fromCEA);
+} else {
+    revert Errors.InvalidTxType();
+}
+```
+
+**Status:**
+
 1. Protected.
 
 2. Protected.
 
-3. Protected 
+3. Protected
 
-My reasoning:
+**My reasoning:**
+
 1. Interval - can be called only inside this function or child contracts.
 
 2. The fee was collected by _collectInboundFee(nativeValue), then the collected fee is saved to feeCollected.
@@ -106,24 +126,22 @@ My reasoning:
 If txType is TX_TYPE.FUNDS or TX_TYPE.FUNDS_AND_PAYLOAD; it is then forwarded to _sendTxWithFunds().
 Otherwise it reverts.
 
-
-```
-
-
 ### _sendTxWithGas(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. Gas amount must be checked against the configured limits.
 
 2. Native gas funds must be deposited to the correct TSS address.
 
 3. The emitted UniversalTx data must match the gas flow data.
 
+**Where I checked:**
 
-Where I checked:
+1.
 
-1. function _sendTxWithGas(
+```solidity
+function _sendTxWithGas(
     TX_TYPE _txType,
     address _caller,
     address _recipient,
@@ -138,7 +156,12 @@ Where I checked:
         _checkBlockUSDCap(_gasAmount);
         _handleDeposits(address(0), _gasAmount);
     }
-2. function _handleDeposits(address token, uint256 amount) internal {
+```
+
+2.
+
+```solidity
+function _handleDeposits(address token, uint256 amount) internal {
     if (token == address(0)) {
         (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
         if (!ok) revert Errors.DepositFailed();
@@ -147,20 +170,21 @@ Where I checked:
         IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
     }
 }
-
+```
 
 3.
 
-   // this is a part of  _sendTxWithGas()
-
+```solidity
+// this is a part of  _sendTxWithGas()
 emitUniversalTx(
-        _caller, _recipient, address(0), _gasAmount, _payload, _revertRecipient, _txType, _signatureData, _fromCEA
-    );
-}
+    _caller, _recipient, address(0), _gasAmount, _payload, _revertRecipient, _txType, _signatureData, _fromCEA
+);
+```
 
 Full function:
 
-          function _emitUniversalTx(
+```solidity
+function _emitUniversalTx(
     address sender,
     address recipient,
     address token,
@@ -183,71 +207,74 @@ Full function:
         fromCEA: fromCEA
     });
 }
+```
 
+**Protection / Check:**
 
-          
+1.
 
-
-Protection / Check:
-
- 1. if (_gasAmount > 0) {
-        _checkUSDCaps(_gasAmount);
-        _checkBlockUSDCap(_gasAmount);
-        _handleDeposits(address(0), _gasAmount);
-    }
-2.  if (token == address(0)) {
-        (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
-        if (!ok) revert Errors.DepositFailed();
-
-
-3.   emit UniversalTx({
-        sender: sender,
-        recipient: recipient,
-        token: token,
-        amount: amount,
-        payload: payload,
-        revertRecipient: revertRecipient,
-        txType: txType,
-        signatureData: signatureData,
-        fromCEA: fromCEA
-    });
+```solidity
+if (_gasAmount > 0) {
+    _checkUSDCaps(_gasAmount);
+    _checkBlockUSDCap(_gasAmount);
+    _handleDeposits(address(0), _gasAmount);
 }
+```
 
-Status:
+2.
+
+```solidity
+if (token == address(0)) {
+    (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
+    if (!ok) revert Errors.DepositFailed();
+}
+```
+
+3.
+
+```solidity
+emit UniversalTx({
+    sender: sender,
+    recipient: recipient,
+    token: token,
+    amount: amount,
+    payload: payload,
+    revertRecipient: revertRecipient,
+    txType: txType,
+    signatureData: signatureData,
+    fromCEA: fromCEA
+});
+```
+
+**Status:**
+
 1. Protected.
 
 2. Protected.
 
 3. Suspicious
 
-My reasoning:
+**My reasoning:**
 
 1. If this funcion receives _gasAmount, the function first checks the gas limits using checkUSDCaps(), the second check verifies the gas amount limit per the block.After all call. Finally _handleDeposits() is called.
 
-
 2. When _handleDeposits() is called , the contract sends native funds to TSS_ADDRESS using payable.Otherwise it reverts.
-
 
 3. The UniversalTx() is risky because _emitUniversalTx() don't verifies data before emitting,this may lead to native funds going to the wrong address by changing emit data.
 
-
-
-
-```
-
-
 ### _sendTxWithFunds(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. Native funds amount must match the native value used in the transaction.
 
 2. ERC20 funds must be deposited before UniversalTx is emitted.
 
 3. FUNDS_AND_PAYLOAD must preserve both funds data and payload data.
 
-Where I checked:
+**Where I checked:**
 
+```solidity
 function _sendTxWithFunds(UniversalTxRequest memory _req, uint256 nativeValue, TX_TYPE txType, bool fromCEA)
     private
 {
@@ -348,36 +375,50 @@ function _sendTxWithFunds(UniversalTxRequest memory _req, uint256 nativeValue, T
         );
     }
 }
+```
 
-Protection / Check:
+**Protection / Check:**
 
-1. if (_req.token == address(0)) {
-       if (_req.amount != nativeValue) revert Errors.InvalidAmount();
-   }
+1.
 
-2. _handleDeposits(tokenForFunds, _req.amount);
-   _emitUniversalTx(...);
+```solidity
+if (_req.token == address(0)) {
+   if (_req.amount != nativeValue) revert Errors.InvalidAmount();
+}
+```
 
-3. _emitUniversalTx(
-       _msgSender(),
-       fundsAndPayloadRecipient,
-       tokenForFundsAndPayload,
-       _req.amount,
-       _req.payload,
-       _req.revertRecipient,
-       txType,
-       _req.signatureData,
-       fromCEA
-   );
+2.
 
-Status:
+```solidity
+_handleDeposits(tokenForFunds, _req.amount);
+_emitUniversalTx(...);
+```
+
+3.
+
+```solidity
+_emitUniversalTx(
+   _msgSender(),
+   fundsAndPayloadRecipient,
+   tokenForFundsAndPayload,
+   _req.amount,
+   _req.payload,
+   _req.revertRecipient,
+   txType,
+   _req.signatureData,
+   fromCEA
+);
+```
+
+**Status:**
+
 1. Protected.
 
 2. Protected.
 
 3. Protected.
 
-My reasoning:
+**My reasoning:**
 
 Assistant Review Note:
 1. In the native FUNDS path, _req.amount must equal nativeValue. In the native FUNDS_AND_PAYLOAD path, nativeValue must cover _req.amount and the remaining value is separated as gasAmount.
@@ -385,21 +426,23 @@ Assistant Review Note:
 2. _handleDeposits(...) is called before _emitUniversalTx(...). If the deposit fails, the transaction reverts and the event is not emitted.
 
 3. The selected token, _req.amount, and _req.payload are forwarded into the same UniversalTx event. This keeps the funds and payload together in the FUNDS_AND_PAYLOAD path.
-```
-
 
 ### _handleDeposits(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. Native funds must be sent to TSS_ADDRESS.
 
 2. ERC20 funds must be transferred to VAULT.
 
 3. Unsupported ERC20 tokens must be rejected.
 
-Where I checked:
-1,2,3. function _handleDeposits(address token, uint256 amount) internal {
+**Where I checked:**
+
+1,2,3.
+
+```solidity
+function _handleDeposits(address token, uint256 amount) internal {
     if (token == address(0)) {
         (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
         if (!ok) revert Errors.DepositFailed();
@@ -408,45 +451,50 @@ Where I checked:
         IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
     }
 }
+```
 
+**Protection / Check:**
 
-Protection / Check:
+1.
 
-1.  if (token == address(0)) {
-        (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
-        if (!ok) revert Errors.DepositFailed()
+```solidity
+if (token == address(0)) {
+    (bool ok,) = payable(TSS_ADDRESS).call{ value: amount }("");
+    if (!ok) revert Errors.DepositFailed();
+}
+```
 
-2.  IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
+2.
 
+```solidity
+IERC20(token).safeTransferFrom(_msgSender(), VAULT, amount);
+```
 
+3.
 
-3.  if (tokenToLimitThreshold[token] == 0) revert Errors.NotSupported()
+```solidity
+if (tokenToLimitThreshold[token] == 0) revert Errors.NotSupported();
+```
 
-
-Status:
+**Status:**
 
 1. Protected
 
 2. Protected
 
-3. Protected 
+3. Protected
 
+**My reasoning:**
 
-My reasoning:
 1. When _handleDeposits() is called, the contract sends native funds to TSS_ADDRESS using payable.Otherwise it reverts ( Errors.DepositFailed() ).
 
-2. When  _handleDeposits() is called, the contract  sends token (ERC20) funds to VAULT using and safeTransfer(). Otherwise it reverts. Errors.NotSupported()  . 
+2. When  _handleDeposits() is called, the contract  sends token (ERC20) funds to VAULT using and safeTransfer(). Otherwise it reverts. Errors.NotSupported()  .
 
 3. if token is not found in mapping, it reverts ( Errors.NotSupported() ).
 
-
-
-```
-
 ### _emitUniversalTx(...)
 
-```text
-Invariant:
+**Invariant:**
 
 1. Event amount must match the real deposited amount.
 
@@ -454,10 +502,12 @@ Invariant:
 
 3. Event recipient and payload must match the intended user request.
 
+**Where I checked:**
 
-Where I checked:
+1,2,3.
 
-1,2,3. function _emitUniversalTx(
+```solidity
+function _emitUniversalTx(
     address sender,
     address recipient,
     address token,
@@ -480,55 +530,61 @@ Where I checked:
         fromCEA: fromCEA
     });
 }
+```
 
+**Protection / Check:**
 
-Protection / Check:
- 1. emit UniversalTx({
-        amount: amount,
-    });
+1.
 
-2.   emit UniversalTx({
-       token: token,
-    });
+```solidity
+emit UniversalTx({
+    amount: amount,
+});
+```
 
-3. emit UniversalTx({
-       payload: payload,
+2.
 
-       recipient: recipient,
-         
-    });
+```solidity
+emit UniversalTx({
+   token: token,
+});
+```
 
+3.
 
+```solidity
+emit UniversalTx({
+   payload: payload,
+   recipient: recipient,
+});
+```
 
-
-Status:
+**Status:**
 
 1,2,3. Suspicious.
 
-
-
-
-My reasoning:
+**My reasoning:**
 
 1,2,3. The UniversalTx() is risky because _emitUniversalTx() don't verifies data before emitting,this may lead to native funds going to the wrong address by changing emit data.
-
-```
 
 ## Finalize Flow
 
 ### Vault.finalizeUniversalTx(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. Only TSS can finalize a universal transaction.
 
 2. The correct CEA must be used for the pushAccount.
 
 3. Finalize data must not be changed before _finalizeUniversalTx(...).
 
-Where I checked:
+**Where I checked:**
 
-1. function finalizeUniversalTx(
+1.
+
+```solidity
+function finalizeUniversalTx(
     bytes32 subTxId,
     bytes32 universalTxId,
     address pushAccount,
@@ -546,20 +602,32 @@ Where I checked:
 
     emit UniversalTxFinalized(subTxId, universalTxId, pushAccount, recipient, token, amount, data);
 }
+```
 
-Protection / Check:
+**Protection / Check:**
 
-1.    onlyRole(TSS_ROLE)
+1.
 
-2.     (address cea, bool isDeployed) = CEAFactory.getCEAForPushAccount(pushAccount);
-    if (!isDeployed) {
-        cea = CEAFactory.deployCEA(pushAccount);
+```solidity
+onlyRole(TSS_ROLE)
+```
 
-3.     _finalizeUniversalTx(subTxId, universalTxId, pushAccount, recipient, token, amount, data, cea) 
+2.
 
+```solidity
+(address cea, bool isDeployed) = CEAFactory.getCEAForPushAccount(pushAccount);
+if (!isDeployed) {
+    cea = CEAFactory.deployCEA(pushAccount);
+}
+```
 
+3.
 
-Status:
+```solidity
+_finalizeUniversalTx(subTxId, universalTxId, pushAccount, recipient, token, amount, data, cea)
+```
+
+**Status:**
 
 1. Protected.
 
@@ -567,29 +635,27 @@ Status:
 
 3. Protected.
 
-
-My reasoning:
+**My reasoning:**
 
 1. Only TSS can call this function.
-
 
 2. The Vault asks CEAFactory for the CEA address that belongs to this pushAccount, if the CEA address is not found; then CEAFactory.deployCEA deploys a new CEA for this pushAccount.
 
 3.  The finalizeUniversalTx() parameters  match the _finalizeUniversalTx()  parameters.
-```
 
 ### Vault._finalizeUniversalTx(...)
 
-```text
-Invariant:
+**Invariant:**
+
 1. ERC20 amount must be transferred from Vault to the correct CEA before execution.
 
 2. Native amount must be sent to CEA as call value before execution.
 
 3. CEA execution parameters must match the finalized transaction data.
 
+**Where I checked:**
 
-Where I checked:
+```solidity
 function _finalizeUniversalTx(
     bytes32 subTxId,
     bytes32 universalTxId,
@@ -614,50 +680,59 @@ function _finalizeUniversalTx(
         ICEA(cea).executeUniversalTx{ value: amount }(subTxId, universalTxId, pushAccount, recipient, data); // native token
     }
 }
-Protection / Check:
+```
 
-1. if (token != address(0)) {
-        if (amount > 0) {
-            if (IERC20(token).balanceOf(address(this)) < amount) {
-                revert Errors.InvalidAmount();
-            }
-            IERC20(token).safeTransfer(cea, amount);
+**Protection / Check:**
+
+1.
+
+```solidity
+if (token != address(0)) {
+    if (amount > 0) {
+        if (IERC20(token).balanceOf(address(this)) < amount) {
+            revert Errors.InvalidAmount();
         }
-        ICEA(cea).executeUniversalTx(subTxId, universalTxId, pushAccount, recipient, data); // ERC20 token
+        IERC20(token).safeTransfer(cea, amount);
+    }
+    ICEA(cea).executeUniversalTx(subTxId, universalTxId, pushAccount, recipient, data); // ERC20 token
+}
+```
 
+2.
 
+```solidity
+} else {
+    ICEA(cea).executeUniversalTx{ value: amount }(subTxId, universalTxId, pushAccount, recipient, data); // native token
+}
+```
 
-2.   } else {
-        ICEA(cea).executeUniversalTx{ value: amount }(subTxId, universalTxId, pushAccount, recipient, data); // native token
+3.
 
+```solidity
+_validateParams(pushAccount, token, amount);
+```
 
+**Status:**
 
-
-3.  _validateParams(pushAccount, token, amount);
-
-
-Status:
 1.  Protected.
 
 2.  Protected.
 
 3. Protected.
 
-My reasoning:
-1. Vault checks that it has enought ERC20 tokens and uses safeTransfer() to send exact amount to the CEA before .executeUniversalTx() is called. Otherwise it reverts 
+**My reasoning:**
+
+1. Vault checks that it has enought ERC20 tokens and uses safeTransfer() to send exact amount to the CEA before .executeUniversalTx() is called. Otherwise it reverts
 
 2. Vault sends native tokens to CEA.
 
-3. _validateParams() verifies the  parameters ( pushAccount, token, amount ) before sending them to the CEA.Otherwise it reverts 
-
-```
+3. _validateParams() verifies the  parameters ( pushAccount, token, amount ) before sending them to the CEA.Otherwise it reverts
 
 ## Revert / Refund Flow
 
 ### gateway.revertUniversalTx(...)
 
-```text
-Invariant:
+**Invariant:**
 
 1. Only Vault can trigger the revert flow.
 
@@ -665,10 +740,11 @@ Invariant:
 
 3. RevertUniversalTx event data must match the real reverted funds
 
-Where I checked:
+**Where I checked:**
 
 1.
 
+```solidity
 function revertUniversalTx(
     bytes32 subTxId,
     bytes32 universalTxId,
@@ -689,27 +765,40 @@ function revertUniversalTx(
         subTxId, universalTxId, revertInstruction.revertRecipient, token, amount, revertInstruction
     );
 }
+```
 
-Protection / Check:
+**Protection / Check:**
 
-1. onlyRole(VAULT_ROLE
+1.
 
-2.  _validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+```solidity
+onlyRole(VAULT_ROLE)
+```
 
-     (bool ok,) = payable(revertInstruction.revertRecipient).call{ value: amount }("");
-        if (!ok) revert Errors.WithdrawFailed();
+2.
 
-3.  _validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+```solidity
+_validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
 
-Status:
+(bool ok,) = payable(revertInstruction.revertRecipient).call{ value: amount }("");
+if (!ok) revert Errors.WithdrawFailed();
+```
+
+3.
+
+```solidity
+_validateRevertParams(subTxId, amount, token, revertInstruction.revertRecipient);
+```
+
+**Status:**
 
 1. Protected.
 
 2. Protected.
 
-3. Protected. 
+3. Protected.
 
-My reasoning:
+**My reasoning:**
 
 1. Only Vault can call this function.
 
@@ -717,12 +806,9 @@ My reasoning:
 
 3. Vault verifies data for RevertUniversalTx() using  _validateRevertParams().
 
-```
-
 ### _validateRevertParams(...)
 
-```text
-Invariant:
+**Invariant:**
 
 1. The same subTxId must not be reverted twice.
 
@@ -730,8 +816,9 @@ Invariant:
 
 3. Native revert amount must match msg.value.
 
-Where I checked:
+**Where I checked:**
 
+```solidity
 function _validateRevertParams(bytes32 subTxId, uint256 amount, address token, address revertRecipient) private {
     if (isExecuted[subTxId]) revert Errors.PayloadExecuted();
     if (revertRecipient == address(0)) revert Errors.InvalidRecipient();
@@ -739,34 +826,43 @@ function _validateRevertParams(bytes32 subTxId, uint256 amount, address token, a
 
     isExecuted[subTxId] = true;
 }
+```
 
-Protection / Check:
+**Protection / Check:**
 
-1.  if (isExecuted[subTxId]) revert Errors.PayloadExecuted();
+1.
 
-2.  if (revertRecipient == address(0)) revert Errors.InvalidRecipient();
+```solidity
+if (isExecuted[subTxId]) revert Errors.PayloadExecuted();
+```
 
-3.  if (amount == 0 || (token == address(0) && msg.value != amount)) revert Errors.InvalidAmount();
+2.
 
+```solidity
+if (revertRecipient == address(0)) revert Errors.InvalidRecipient();
+```
 
-Status:
+3.
+
+```solidity
+if (amount == 0 || (token == address(0) && msg.value != amount)) revert Errors.InvalidAmount();
+```
+
+**Status:**
 
 1. Protected.
 
-2. Protected. 
+2. Protected.
 
 3. Protected.
 
-My reasoning:
+**My reasoning:**
 
 1. It checks that the subTxId was not already used. Otherwise it reverts.
 
 2. It checks that amount is not zero.For native token, msg.value must equal amount.Otherwise it reverts.
 
 3. For native token, msg.value must equal amount.Then it marks subTxId as executed.
-
-
-```
 
 ## Review Conclusion
 
