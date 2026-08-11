@@ -123,7 +123,7 @@ Invariant:
 
 Where I checked:
 
- 1.function _sendTxWithGas(
+1. function _sendTxWithGas(
     TX_TYPE _txType,
     address _caller,
     address _recipient,
@@ -214,9 +214,9 @@ Protection / Check:
 }
 
 Status:
-1.Protected.
+1. Protected.
 
-2.Protected.
+2. Protected.
 
 3. Suspicious
 
@@ -241,7 +241,9 @@ My reasoning:
 ```text
 Invariant:
 1. Native funds amount must match the native value used in the transaction.
+
 2. ERC20 funds must be deposited before UniversalTx is emitted.
+
 3. FUNDS_AND_PAYLOAD must preserve both funds data and payload data.
 
 Where I checked:
@@ -370,7 +372,9 @@ Protection / Check:
 
 Status:
 1. Protected.
+
 2. Protected.
+
 3. Protected.
 
 My reasoning:
@@ -389,7 +393,9 @@ Assistant Review Note:
 ```text
 Invariant:
 1. Native funds must be sent to TSS_ADDRESS.
+
 2. ERC20 funds must be transferred to VAULT.
+
 3. Unsupported ERC20 tokens must be rejected.
 
 Where I checked:
@@ -443,7 +449,9 @@ My reasoning:
 Invariant:
 
 1. Event amount must match the real deposited amount.
+
 2. Event token must match the real deposited token.
+
 3. Event recipient and payload must match the intended user request.
 
 
@@ -495,14 +503,14 @@ Protection / Check:
 
 Status:
 
- 1,2,3.Suspicious.
+1,2,3. Suspicious.
 
 
 
 
 My reasoning:
 
- 1,2,3.The UniversalTx() is risky because _emitUniversalTx() don't verifies data before emitting,this may lead to native funds going to the wrong address by changing emit data.
+1,2,3. The UniversalTx() is risky because _emitUniversalTx() don't verifies data before emitting,this may lead to native funds going to the wrong address by changing emit data.
 
 ```
 
@@ -513,7 +521,9 @@ My reasoning:
 ```text
 Invariant:
 1. Only TSS can finalize a universal transaction.
+
 2. The correct CEA must be used for the pushAccount.
+
 3. Finalize data must not be changed before _finalizeUniversalTx(...).
 
 Where I checked:
@@ -551,11 +561,11 @@ Protection / Check:
 
 Status:
 
-1.Protected.
+1. Protected.
 
-2.Protected.
+2. Protected.
 
-3.Protected.
+3. Protected.
 
 
 My reasoning:
@@ -573,7 +583,9 @@ My reasoning:
 ```text
 Invariant:
 1. ERC20 amount must be transferred from Vault to the correct CEA before execution.
+
 2. Native amount must be sent to CEA as call value before execution.
+
 3. CEA execution parameters must match the finalized transaction data.
 
 
@@ -640,8 +652,6 @@ My reasoning:
 
 ```
 
-```
-
 ## Revert / Refund Flow
 
 ### gateway.revertUniversalTx(...)
@@ -650,7 +660,9 @@ My reasoning:
 Invariant:
 
 1. Only Vault can trigger the revert flow.
+
 2. Reverted funds must be sent to the intended revertRecipient.
+
 3. RevertUniversalTx event data must match the real reverted funds
 
 Where I checked:
@@ -705,13 +717,17 @@ My reasoning:
 
 3. Vault verifies data for RevertUniversalTx() using  _validateRevertParams().
 
+```
+
 ### _validateRevertParams(...)
 
 ```text
 Invariant:
 
 1. The same subTxId must not be reverted twice.
+
 2. revertRecipient must not be address(0).
+
 3. Native revert amount must match msg.value.
 
 Where I checked:
@@ -743,9 +759,9 @@ Status:
 
 My reasoning:
 
-1.It checks that the subTxId was not already used. Otherwise it reverts.
+1. It checks that the subTxId was not already used. Otherwise it reverts.
 
-2.It checks that amount is not zero.For native token, msg.value must equal amount.Otherwise it reverts.
+2. It checks that amount is not zero.For native token, msg.value must equal amount.Otherwise it reverts.
 
 3. For native token, msg.value must equal amount.Then it marks subTxId as executed.
 
