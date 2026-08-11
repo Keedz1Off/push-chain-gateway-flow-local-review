@@ -1,8 +1,4 @@
-# PoC 01 - Missing TSS Authorization
-
-## Status
-
-This is a simplified security model, not a confirmed vulnerability in the production Push Chain contracts.
+# 01 - Fake Finalize
 
 ## Related Production File
 
@@ -14,6 +10,13 @@ contracts/evm-gateway/src/Vault.sol
 
 ```solidity
 Vault.finalizeUniversalTx(...)
+```
+
+## Status
+
+```text
+Simplified PoC model.
+Not a confirmed vulnerability in the production Push Chain contracts.
 ```
 
 ## Broken Invariant
@@ -30,9 +33,9 @@ This may lead to fake finalization.
 
 ## Root Cause
 
-The external finalization function does not verify that the caller has the trusted TSS role.
+The vulnerable version does not verify that `msg.sender` has the trusted TSS role.
 
-Without this check, an attacker can directly submit attacker-controlled finalization data.
+An attacker can therefore call `finalizeUniversalTx(...)` directly and provide an attacker-controlled recipient and amount.
 
 ## Vulnerable Version
 
@@ -161,45 +164,85 @@ contract MissingTSSAuthorizationPoC is Test {
 }
 ```
 
-## What the PoC Proves
-
-### Vulnerable Case
+## Attack Flow
 
 ```text
 Attacker
--> calls finalizeUniversalTx(...)
+-> directly calls finalizeUniversalTx(...)
 -> no TSS authorization is checked
 -> attacker-controlled recipient and amount are accepted
+-> fake finalization succeeds
 ```
 
-The test proves the bad state:
+## What the Vulnerable Test Proves
 
-```solidity
-lastRecipient == ATTACKER
-lastAmount == 1_000_000 ether
-```
+The attacker directly calls `finalizeUniversalTx(...)`.
 
-### Fixed Case
+The vulnerable contract accepts the following fake data:
 
 ```text
-Attacker
--> calls finalizeUniversalTx(...)
--> msg.sender is checked against TSS
--> call reverts with OnlyTSS()
+recipient = ATTACKER
+amount = 1,000,000 tokens
 ```
 
-`vm.expectRevert(...)` means that the test expects the protection to reject the attacker.
+The test proves the bad state using:
 
-A passing fixed test means that the authorization check worked.
+```solidity
+assertEq(
+    vulnerableVault.lastRecipient(),
+    ATTACKER
+);
+
+assertEq(
+    vulnerableVault.lastAmount(),
+    1_000_000 ether
+);
+```
+
+A passing vulnerable test means that the invariant violation was reproduced.
+
+## What the Fixed Test Proves
+
+The fixed contract checks:
+
+```solidity
+if (msg.sender != tss) {
+    revert OnlyTSS();
+}
+```
+
+The test expects the attacker call to revert:
+
+```solidity
+vm.expectRevert(
+    FixedVault.OnlyTSS.selector
+);
+```
+
+A passing fixed test means that the TSS authorization successfully blocked the attacker.
 
 ## Impact
 
-An unauthorized caller could trigger fake destination-side execution using an attacker-controlled recipient or amount.
+Without TSS authorization, an attacker may be able to submit fake finalization data.
 
-If finalization releases or transfers real assets, this could lead to unauthorized fund execution.
+Depending on the real destination execution logic, this may lead to:
 
-## Scope Note
+```text
+- fake finalization;
+- execution for the wrong recipient;
+- processing of an incorrect amount;
+- execution of an attacker-controlled payload;
+- unauthorized release or transfer of funds.
+```
 
-The real Push Chain implementation protects `Vault.finalizeUniversalTx(...)` using TSS role authorization.
+## Production Protection
 
-This PoC demonstrates why the invariant is important. It does not claim that the production Push Chain implementation is vulnerable.
+The real Push Chain `Vault.finalizeUniversalTx(...)` is protected by TSS role authorization.
+
+Conceptually, the protection is:
+
+```solidity
+onlyRole(TSS_ROLE)
+```
+
+Therefore, this PoC explains the importance of the authorization invariant. It does not claim that the current production contract is vulnerable.
