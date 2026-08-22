@@ -55,7 +55,7 @@ My reasoning:
 
 **Where I checked:**
 
-3.
+1.
 
 ```solidity
 function _routeUniversalTx(
@@ -76,10 +76,22 @@ if (!fromCEA) {
     totalProtocolFeesCollected += feeCollected;
 }
 ```
+```solidity 
+3.if (txType == TX_TYPE.GAS || txType == TX_TYPE.GAS_AND_PAYLOAD) {
+    address gasRecipient = fromCEA ? req.recipient : address(0); //  result 1: req.recipient
+    _sendTxWithGas(
+        txType, caller, gasRecipient, nativeValue, req.payload, req.revertRecipient, req.signatureData, fromCEA
+    );
+} else if (txType == TX_TYPE.FUNDS || txType == TX_TYPE.FUNDS_AND_PAYLOAD) {
+    _sendTxWithFunds(req, nativeValue, txType, fromCEA);
+} else {
+    revert Errors.InvalidTxType();
+}
 
 **Protection / Check:**
-
+```
 1.
+
 
 ```solidity
 internal
